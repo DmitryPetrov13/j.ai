@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek Chatbot</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chatbox {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .user-message {
+            background: #007bff;
+            align-self: flex-end;
+            color: #fff;
+        }
+
+        .bot-message {
+            background: rgba(255, 255, 255, 0.2);
+            align-self: flex-start;
+            color: #fff;
+        }
+
+        .chat-input-container {
+            display: flex;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .send-button {
+            background: #007bff;
+            border: none;
+            border-radius: 15px;
+            color: #fff;
+            padding: 10px 20px;
+            margin-left: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .send-button:hover {
+            background: #0056b3;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Markdown-like formatting */
+        .bot-message code {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .bot-message em {
+            font-style: italic;
+        }
+
+        .bot-message strong {
+            font-weight: bold;
+        }
+
+        .bot-message strong em {
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        .bot-message h3 {
+            font-size: 1.2em;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            DeepSeek Chatbot
+        </div>
+        <div class="chatbox" id="chatbox">
+            <!-- Chat messages will appear here -->
+        </div>
+        <div class="chat-input-container">
+            <input type="text" id="userInput" class="chat-input" placeholder="Type your message...">
+            <button class="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            const userInput = document.getElementById('userInput').value.trim();
+            if (!userInput) return;
+
+            // Add user message to chatbox
+            const chatbox = document.getElementById('chatbox');
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user-message';
+            userMessage.textContent = userInput;
+            chatbox.appendChild(userMessage);
+
+            // Clear input field
+            document.getElementById('userInput').value = '';
+
+            // Scroll to bottom of chatbox
+            chatbox.scrollTop = chatbox.scrollHeight;
+
+            // Send message to Flask backend
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userInput })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Add bot response to chatbox
+                const botMessage = document.createElement('div');
+                botMessage.className = 'message bot-message';
+                botMessage.innerHTML = formatMessage(data.choices[0].message.content);
+                chatbox.appendChild(botMessage);
+
+                // Scroll to bottom of chatbox
+                chatbox.scrollTop = chatbox.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Format bot response with Markdown-like syntax
+        function formatMessage(message) {
+            // Replace ```python``` with <code> tags
+            message = message.replace(/```python([\s\S]*?)```/g, '<code>$1</code>');
+            // Replace *italic* with <em> tags
+            message = message.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            // Replace **bold** with <strong> tags
+            message = message.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Replace ***bold italic*** with <strong><em> tags
+            message = message.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+            // Replace ### header with <h3> tags
+            message = message.replace(/###\s+([^\n]+)/g, '<h3>$1</h3>');
+            return message;
+        }
+
+        // Allow pressing Enter to send message
+        document.getElementById('userInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
